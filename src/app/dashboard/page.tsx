@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [actionLoading, setActionLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [shiftType, setShiftType] = useState('PRONTOCLINICA');
+  const [sectors, setSectors] = useState<{id: number, name: string}[]>([]);
   const [reportMonth, setReportMonth] = useState(format(new Date(), 'yyyy-MM'));
   const router = useRouter();
 
@@ -37,9 +38,19 @@ export default function Dashboard() {
 
   const fetchShift = async (doctorId: number) => {
     try {
-      const res = await fetch(`/api/shift?doctorId=${doctorId}`);
-      const data = await res.json();
-      setActiveShift(data.shift);
+      const [resShift, resSecs] = await Promise.all([
+        fetch(`/api/shift?doctorId=${doctorId}`),
+        fetch('/api/admin/sectors') // Dashboard can reuse this endpoint or we can create a public one. Wait, /api/admin/sectors doesn't check session in the code provided, so it is accessible.
+      ]);
+      const dataShift = await resShift.json();
+      const dataSecs = await resSecs.json();
+      setActiveShift(dataShift.shift);
+      
+      const fetchedSectors = dataSecs.sectors || [];
+      setSectors(fetchedSectors);
+
+      // If doctor has restricted allowed_unit and shiftType is not set correctly, or if there's no shift type,
+      // handled in useEffect, but we can set default here if needed
     } catch (err) {
       console.error(err);
     } finally {
@@ -164,31 +175,20 @@ export default function Dashboard() {
               </button>
             ) : (
               <div className="w-full">
-                <div className="mb-6 grid grid-cols-3 gap-3">
-                  {(!doctor?.allowed_unit || doctor?.allowed_unit === 'ALL' || doctor?.allowed_unit.split(',').includes('PRONTOCLINICA')) && (
-                    <button 
-                      onClick={() => setShiftType('PRONTOCLINICA')}
-                      className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-2 ${shiftType === 'PRONTOCLINICA' ? 'border-sky-500 bg-sky-500/10 text-sky-400' : 'border-white/5 bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
-                    >
-                      <span className="font-semibold text-sm">Prontoclínica</span>
-                    </button>
-                  )}
-                  {(!doctor?.allowed_unit || doctor?.allowed_unit === 'ALL' || doctor?.allowed_unit.split(',').includes('UTI_I')) && (
-                    <button 
-                      onClick={() => setShiftType('UTI_I')}
-                      className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-2 ${shiftType === 'UTI_I' ? 'border-sky-500 bg-sky-500/10 text-sky-400' : 'border-white/5 bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
-                    >
-                      <span className="font-semibold text-sm">UTI I</span>
-                    </button>
-                  )}
-                  {(!doctor?.allowed_unit || doctor?.allowed_unit === 'ALL' || doctor?.allowed_unit.split(',').includes('UTI_II')) && (
-                    <button 
-                      onClick={() => setShiftType('UTI_II')}
-                      className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-2 ${shiftType === 'UTI_II' ? 'border-sky-500 bg-sky-500/10 text-sky-400' : 'border-white/5 bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
-                    >
-                      <span className="font-semibold text-sm">UTI II</span>
-                    </button>
-                  )}
+                <div className="mb-6 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {sectors.map((sector) => {
+                    const isAllowed = !doctor?.allowed_unit || doctor?.allowed_unit === 'ALL' || doctor?.allowed_unit.split(',').includes(sector.name);
+                    if (!isAllowed) return null;
+                    return (
+                      <button 
+                        key={sector.id}
+                        onClick={() => setShiftType(sector.name)}
+                        className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-2 ${shiftType === sector.name ? 'border-sky-500 bg-sky-500/10 text-sky-400' : 'border-white/5 bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                      >
+                        <span className="font-semibold text-sm">{sector.name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
                 <button
                   onClick={() => handleShiftAction('start')}

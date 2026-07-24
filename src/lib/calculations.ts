@@ -1,4 +1,10 @@
-export function calculateShiftValue(shiftType: string, startTimeIso: string, endTimeIso: string | null, settings: Record<string, string>): number {
+export function calculateShiftValue(
+  shiftType: string, 
+  startTimeIso: string, 
+  endTimeIso: string | null, 
+  settings: Record<string, string>,
+  sectors?: { name: string; weekday_value: number; weekend_value: number }[]
+): number {
   if (!startTimeIso) return 0;
   
   const start = new Date(startTimeIso);
@@ -12,23 +18,33 @@ export function calculateShiftValue(shiftType: string, startTimeIso: string, end
     dayOfWeek === 6 || 
     (dayOfWeek === 5 && hour >= 19);
 
-  const prontoWeekday = parseFloat(settings.pronto_weekday || '1350');
-  const prontoWeekend = parseFloat(settings.pronto_weekend || '1400');
-  const utiIWeekday = parseFloat(settings.uti_i_weekday || '1419');
-  const utiIWeekend = parseFloat(settings.uti_i_weekend || '1471');
-  const utiIiWeekday = parseFloat(settings.uti_ii_weekday || '1419');
-  const utiIiWeekend = parseFloat(settings.uti_ii_weekend || '1471');
-
   let fullShiftValue = 0;
-  if (shiftType === 'UTI_I') {
-    fullShiftValue = isWeekendOrFridayNight ? utiIWeekend : utiIWeekday;
-  } else if (shiftType === 'UTI_II') {
-    fullShiftValue = isWeekendOrFridayNight ? utiIiWeekend : utiIiWeekday;
-  } else if (shiftType === 'UTI') { // Fallback for old records
-    fullShiftValue = isWeekendOrFridayNight ? utiIWeekend : utiIWeekday;
+
+  if (sectors && sectors.length > 0) {
+    // Find the sector
+    // For fallback of old 'UTI' records, map them to 'UTI I'
+    const searchType = shiftType === 'UTI' ? 'UTI I' : shiftType;
+    const sector = sectors.find(s => s.name === searchType) || sectors[0]; // fallback to first sector if not found
+    fullShiftValue = isWeekendOrFridayNight ? sector.weekend_value : sector.weekday_value;
   } else {
-    // PRONTOCLINICA (or default)
-    fullShiftValue = isWeekendOrFridayNight ? prontoWeekend : prontoWeekday;
+    // Legacy fallback using settings table
+    const prontoWeekday = parseFloat(settings.pronto_weekday || '1350');
+    const prontoWeekend = parseFloat(settings.pronto_weekend || '1400');
+    const utiIWeekday = parseFloat(settings.uti_i_weekday || '1419');
+    const utiIWeekend = parseFloat(settings.uti_i_weekend || '1471');
+    const utiIiWeekday = parseFloat(settings.uti_ii_weekday || '1419');
+    const utiIiWeekend = parseFloat(settings.uti_ii_weekend || '1471');
+
+    if (shiftType === 'UTI_I') {
+      fullShiftValue = isWeekendOrFridayNight ? utiIWeekend : utiIWeekday;
+    } else if (shiftType === 'UTI_II') {
+      fullShiftValue = isWeekendOrFridayNight ? utiIiWeekend : utiIiWeekday;
+    } else if (shiftType === 'UTI') { // Fallback for old records
+      fullShiftValue = isWeekendOrFridayNight ? utiIWeekend : utiIWeekday;
+    } else {
+      // PRONTOCLINICA (or default)
+      fullShiftValue = isWeekendOrFridayNight ? prontoWeekend : prontoWeekday;
+    }
   }
 
   // Calculate proportional value
@@ -40,3 +56,4 @@ export function calculateShiftValue(shiftType: string, startTimeIso: string, end
 
   return hourlyRate * hoursWorked;
 }
+

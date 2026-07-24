@@ -304,17 +304,23 @@ function ReportsTab() {
 
 function DoctorsTab() {
   const [doctors, setDoctors] = useState<any[]>([]);
+  const [sectors, setSectors] = useState<{ id: number; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingDoc, setEditingDoc] = useState<any>(null);
   const [formData, setFormData] = useState({ name: '', code: '', allowed_unit: 'ALL' });
   const [error, setError] = useState('');
 
-  const loadDoctors = async () => {
+  const loadData = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/doctors');
-      const data = await res.json();
-      setDoctors(data.doctors || []);
+      const [resDocs, resSecs] = await Promise.all([
+        fetch('/api/admin/doctors'),
+        fetch('/api/admin/sectors')
+      ]);
+      const dataDocs = await resDocs.json();
+      const dataSecs = await resSecs.json();
+      setDoctors(dataDocs.doctors || []);
+      setSectors(dataSecs.sectors || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -322,7 +328,7 @@ function DoctorsTab() {
     }
   };
 
-  useEffect(() => { loadDoctors(); }, []);
+  useEffect(() => { loadData(); }, []);
 
   const toggleUnit = (unit: string) => {
     let current = (formData.allowed_unit || 'ALL').split(',').filter(u => u !== 'ALL' && u.trim() !== '');
@@ -362,7 +368,7 @@ function DoctorsTab() {
       if (res.ok) {
         setEditingDoc(null);
         setFormData({ name: '', code: '', allowed_unit: 'ALL' });
-        loadDoctors();
+        loadData();
       } else {
         const data = await res.json();
         setError(data.error || 'Erro ao salvar médico');
@@ -376,7 +382,7 @@ function DoctorsTab() {
     if (!confirm('Deseja excluir este médico e seus plantões?')) return;
     try {
       await fetch(`/api/admin/doctors?id=${id}`, { method: 'DELETE' });
-      loadDoctors();
+      loadData();
     } catch (err) {
       console.error(err);
     }
@@ -418,18 +424,12 @@ function DoctorsTab() {
                 <input type="checkbox" checked={isUnitSelected('ALL')} onChange={() => toggleUnit('ALL')} className="rounded border-white/10 bg-slate-800 text-sky-500 focus:ring-sky-500 focus:ring-offset-slate-900" />
                 Todas as Unidades
               </label>
-              <label className="flex items-center gap-2 text-sm text-slate-300">
-                <input type="checkbox" checked={isUnitSelected('PRONTOCLINICA')} onChange={() => toggleUnit('PRONTOCLINICA')} className="rounded border-white/10 bg-slate-800 text-sky-500 focus:ring-sky-500 focus:ring-offset-slate-900" />
-                Prontoclínica
-              </label>
-              <label className="flex items-center gap-2 text-sm text-slate-300">
-                <input type="checkbox" checked={isUnitSelected('UTI_I')} onChange={() => toggleUnit('UTI_I')} className="rounded border-white/10 bg-slate-800 text-sky-500 focus:ring-sky-500 focus:ring-offset-slate-900" />
-                UTI I
-              </label>
-              <label className="flex items-center gap-2 text-sm text-slate-300">
-                <input type="checkbox" checked={isUnitSelected('UTI_II')} onChange={() => toggleUnit('UTI_II')} className="rounded border-white/10 bg-slate-800 text-sky-500 focus:ring-sky-500 focus:ring-offset-slate-900" />
-                UTI II
-              </label>
+              {sectors.map(sector => (
+                <label key={sector.id} className="flex items-center gap-2 text-sm text-slate-300">
+                  <input type="checkbox" checked={isUnitSelected(sector.name)} onChange={() => toggleUnit(sector.name)} className="rounded border-white/10 bg-slate-800 text-sky-500 focus:ring-sky-500 focus:ring-offset-slate-900" />
+                  {sector.name}
+                </label>
+              ))}
             </div>
           </div>
           <div className="flex gap-2">
@@ -478,6 +478,7 @@ function DoctorsTab() {
 function ShiftsTab() {
   const [shifts, setShifts] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
+  const [sectors, setSectors] = useState<{ id: number; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   
   // State for form
@@ -496,14 +497,17 @@ function ShiftsTab() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [resShifts, resDocs] = await Promise.all([
+      const [resShifts, resDocs, resSecs] = await Promise.all([
         fetch('/api/admin/shifts'),
-        fetch('/api/admin/doctors')
+        fetch('/api/admin/doctors'),
+        fetch('/api/admin/sectors')
       ]);
       const dataShifts = await resShifts.json();
       const dataDocs = await resDocs.json();
+      const dataSecs = await resSecs.json();
       setShifts(dataShifts.shifts || []);
       setDoctors(dataDocs.doctors || []);
+      setSectors(dataSecs.sectors || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -619,8 +623,9 @@ function ShiftsTab() {
                 onChange={e => setFormData({...formData, shift_type: e.target.value})} 
                 className="w-full px-3 py-2 rounded-lg input-premium text-sm"
               >
-                <option value="PRONTOCLINICA">Prontoclínica</option>
-                <option value="UTI">UTI</option>
+                {sectors.map(sector => (
+                  <option key={sector.id} value={sector.name}>{sector.name}</option>
+                ))}
               </select>
             </div>
             
@@ -666,7 +671,7 @@ function ShiftsTab() {
                   <td className="py-3 px-2 text-white">{shift.doctor_name}</td>
                   <td className="py-3 px-2 text-slate-300">{new Date(shift.start_time).toLocaleString('pt-BR')}</td>
                   <td className="py-3 px-2 text-slate-300">{shift.end_time ? new Date(shift.end_time).toLocaleString('pt-BR') : <span className="text-emerald-400 text-xs px-2 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20">Ativo</span>}</td>
-                  <td className="py-3 px-2 text-sky-300 font-medium text-xs">{shift.shift_type === 'UTI' ? 'UTI' : 'Prontoclínica'}</td>
+                  <td className="py-3 px-2 text-sky-300 font-medium text-xs">{shift.shift_type}</td>
                   <td className="py-3 px-2 text-slate-400 italic text-xs max-w-[150px] truncate" title={shift.reason}>{shift.reason || '-'}</td>
                   <td className="py-3 px-2 flex justify-end gap-2">
                     <button onClick={() => openEditForm(shift)} className="p-1.5 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 rounded-lg transition-all"><Edit2 size={16}/></button>
@@ -822,27 +827,30 @@ function UsersTab() {
 
 function SettingsTab() {
   const [settings, setSettings] = useState<Record<string, string>>({
-    pronto_weekday: '',
-    pronto_weekend: '',
-    uti_i_weekday: '',
-    uti_i_weekend: '',
-    uti_ii_weekday: '',
-    uti_ii_weekend: '',
     shift_duration: '12'
   });
+  const [sectors, setSectors] = useState<{ id: number; name: string; weekday_value: number; weekend_value: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const fetchSettings = async () => {
+  // Form states for new/edit sector
+  const [isSectorFormOpen, setIsSectorFormOpen] = useState(false);
+  const [editingSectorId, setEditingSectorId] = useState<number | null>(null);
+  const [sectorForm, setSectorForm] = useState({ name: '', weekday_value: '', weekend_value: '' });
+
+  const loadData = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/settings');
-      if (res.ok) {
-        const data = await res.json();
-        setSettings(data.settings);
-      }
+      const [resSet, resSec] = await Promise.all([
+        fetch('/api/admin/settings'),
+        fetch('/api/admin/sectors')
+      ]);
+      const dataSet = await resSet.json();
+      const dataSec = await resSec.json();
+      setSettings(dataSet.settings || { shift_duration: '12' });
+      setSectors(dataSec.sectors || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -851,14 +859,10 @@ function SettingsTab() {
   };
 
   useEffect(() => {
-    fetchSettings();
+    loadData();
   }, []);
 
-  const handleChange = (key: string, value: string) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
-  };
-
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setError("");
@@ -870,8 +874,7 @@ function SettingsTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ settings })
       });
-
-      if (!res.ok) throw new Error('Falha ao salvar configurações');
+      if (!res.ok) throw new Error('Falha ao salvar configurações gerais');
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
@@ -881,146 +884,188 @@ function SettingsTab() {
     }
   };
 
+  const handleSaveSector = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    try {
+      const res = await fetch('/api/admin/sectors', {
+        method: editingSectorId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingSectorId, ...sectorForm })
+      });
+      if (res.ok) {
+        setIsSectorFormOpen(false);
+        setEditingSectorId(null);
+        loadData();
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Erro ao salvar setor');
+      }
+    } catch (err) {
+      setError('Erro de conexão ao salvar setor');
+    }
+  };
+
+  const handleDeleteSector = async (id: number) => {
+    if (!confirm('Atenção: não exclua um setor se ele já possuir plantões registrados no histórico. Deseja mesmo excluir?')) return;
+    try {
+      const res = await fetch(`/api/admin/sectors?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        loadData();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Erro ao excluir');
+      }
+    } catch (err) {
+      alert('Erro de conexão');
+    }
+  };
+
+  const openSectorForm = (sector?: any) => {
+    if (sector) {
+      setEditingSectorId(sector.id);
+      setSectorForm({ 
+        name: sector.name, 
+        weekday_value: sector.weekday_value.toString(), 
+        weekend_value: sector.weekend_value.toString() 
+      });
+    } else {
+      setEditingSectorId(null);
+      setSectorForm({ name: '', weekday_value: '', weekend_value: '' });
+    }
+    setError("");
+    setIsSectorFormOpen(true);
+  };
+
   if (loading) {
     return <div className="text-center text-slate-400 py-10">Carregando configurações...</div>;
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-4xl mx-auto">
       <div className="flex items-center gap-4 mb-8">
         <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center border border-amber-500/30">
           <DollarSign className="text-amber-400" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-white">Valores de Plantões</h2>
-          <p className="text-slate-400 text-sm">Configure os honorários por tipo e período</p>
+          <h2 className="text-2xl font-bold text-white">Valores de Plantões e Setores</h2>
+          <p className="text-slate-400 text-sm">Gerencie os setores de atendimento e seus honorários</p>
         </div>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
-        <div className="bg-slate-800/40 border border-white/5 p-6 rounded-2xl space-y-4">
+      <div className="space-y-8">
+        {/* Configurações Gerais */}
+        <form onSubmit={handleSaveSettings} className="bg-slate-800/40 border border-white/5 p-6 rounded-2xl space-y-4">
           <h3 className="font-semibold text-emerald-400 mb-2">Configurações Gerais</h3>
-          <div>
-            <label className="block text-sm text-slate-400 mb-1">Duração Padrão do Plantão (Horas)</label>
-            <div className="relative">
-              <input 
-                type="number" step="1" 
-                value={settings.shift_duration || '12'}
-                onChange={e => handleChange('shift_duration', e.target.value)}
-                className="w-full px-4 py-3 rounded-xl input-premium"
-                required
-              />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500">h</span>
+          <div className="grid md:grid-cols-2 gap-4 items-end">
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Duração Padrão do Plantão (Horas)</label>
+              <div className="relative">
+                <input 
+                  type="number" step="1" 
+                  value={settings.shift_duration || '12'}
+                  onChange={e => setSettings(prev => ({ ...prev, shift_duration: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl input-premium"
+                  required
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500">h</span>
+              </div>
             </div>
-            <p className="text-xs text-slate-500 mt-2">
-              Este valor é utilizado para calcular o valor proporcional da hora trabalhada. (Ex: Valor Total / Horas)
-            </p>
+            <div>
+              <button
+                type="submit"
+                disabled={saving}
+                className="w-full py-3 px-6 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-xl transition-all shadow-lg active:scale-95 flex justify-center items-center gap-2"
+              >
+                {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Salvar Configuração"}
+              </button>
+            </div>
+          </div>
+          {success && <div className="text-emerald-400 text-sm">Configuração salva!</div>}
+        </form>
+
+        {/* Gerenciamento de Setores */}
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-semibold text-sky-400 text-lg">Setores Cadastrados</h3>
+            <button 
+              onClick={() => openSectorForm()}
+              className="bg-sky-500 hover:bg-sky-400 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            >
+              <Plus size={16} /> Novo Setor
+            </button>
+          </div>
+
+          {isSectorFormOpen && (
+            <form onSubmit={handleSaveSector} className="bg-slate-800/60 p-6 rounded-2xl mb-6 border border-sky-500/20">
+              <h4 className="text-white font-medium mb-4">{editingSectorId ? 'Editar Setor' : 'Adicionar Setor'}</h4>
+              {error && <div className="text-red-400 text-sm mb-4">{error}</div>}
+              <div className="grid md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Nome do Setor</label>
+                  <input 
+                    type="text" required
+                    value={sectorForm.name}
+                    onChange={e => setSectorForm({...sectorForm, name: e.target.value})}
+                    className="w-full px-3 py-2 rounded-lg input-premium text-sm uppercase"
+                    placeholder="Ex: PEDIATRIA"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Valor Seg. a Sex. (R$)</label>
+                  <input 
+                    type="number" step="0.01" required
+                    value={sectorForm.weekday_value}
+                    onChange={e => setSectorForm({...sectorForm, weekday_value: e.target.value})}
+                    className="w-full px-3 py-2 rounded-lg input-premium text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Valor Fim de Sem. (R$)</label>
+                  <input 
+                    type="number" step="0.01" required
+                    value={sectorForm.weekend_value}
+                    onChange={e => setSectorForm({...sectorForm, weekend_value: e.target.value})}
+                    className="w-full px-3 py-2 rounded-lg input-premium text-sm"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button type="button" onClick={() => setIsSectorFormOpen(false)} className="px-4 py-2 text-sm text-slate-400 hover:text-white">Cancelar</button>
+                <button type="submit" className="px-4 py-2 text-sm bg-sky-500 hover:bg-sky-400 text-white rounded-lg">Salvar Setor</button>
+              </div>
+            </form>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {sectors.map(sector => (
+              <div key={sector.id} className="bg-slate-800/40 border border-white/5 p-5 rounded-2xl flex flex-col justify-between">
+                <div>
+                  <h4 className="font-bold text-white text-lg mb-3">{sector.name}</h4>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Dia de Semana:</span>
+                      <span className="text-emerald-400 font-medium">R$ {sector.weekday_value.toLocaleString('pt-BR', {minimumFractionDigits:2})}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Fim de Semana:</span>
+                      <span className="text-emerald-400 font-medium">R$ {sector.weekend_value.toLocaleString('pt-BR', {minimumFractionDigits:2})}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-white/5">
+                  <button onClick={() => openSectorForm(sector)} className="p-2 text-slate-400 hover:text-sky-400 transition-colors bg-slate-800 hover:bg-slate-700 rounded-lg">
+                    <Edit2 size={16} />
+                  </button>
+                  <button onClick={() => handleDeleteSector(sector.id)} className="p-2 text-slate-400 hover:text-red-400 transition-colors bg-slate-800 hover:bg-slate-700 rounded-lg">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-slate-800/40 border border-white/5 p-6 rounded-2xl space-y-4">
-            <h3 className="font-semibold text-sky-400 mb-2">Prontoclínica</h3>
-            <div>
-              <label className="block text-sm text-slate-400 mb-1">Segunda a Sexta (até 19h)</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <input 
-                  type="number" step="0.01" 
-                  value={settings.pronto_weekday || ''}
-                  onChange={e => handleChange('pronto_weekday', e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl input-premium"
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm text-slate-400 mb-1">Finais de Semana e Sexta Noturno</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <input 
-                  type="number" step="0.01" 
-                  value={settings.pronto_weekend || ''}
-                  onChange={e => handleChange('pronto_weekend', e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl input-premium"
-                  required
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-slate-800/40 border border-white/5 p-6 rounded-2xl space-y-4">
-            <h3 className="font-semibold text-rose-400 mb-2">UTI I</h3>
-            <div>
-              <label className="block text-sm text-slate-400 mb-1">Segunda a Sexta (até 19h)</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <input 
-                  type="number" step="0.01" 
-                  value={settings.uti_i_weekday || ''}
-                  onChange={e => handleChange('uti_i_weekday', e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl input-premium"
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm text-slate-400 mb-1">Finais de Semana e Sexta Noturno</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <input 
-                  type="number" step="0.01" 
-                  value={settings.uti_i_weekend || ''}
-                  onChange={e => handleChange('uti_i_weekend', e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl input-premium"
-                  required
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-slate-800/40 border border-white/5 p-6 rounded-2xl space-y-4">
-            <h3 className="font-semibold text-fuchsia-400 mb-2">UTI II</h3>
-            <div>
-              <label className="block text-sm text-slate-400 mb-1">Segunda a Sexta (até 19h)</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <input 
-                  type="number" step="0.01" 
-                  value={settings.uti_ii_weekday || ''}
-                  onChange={e => handleChange('uti_ii_weekday', e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl input-premium"
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm text-slate-400 mb-1">Finais de Semana e Sexta Noturno</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <input 
-                  type="number" step="0.01" 
-                  value={settings.uti_ii_weekend || ''}
-                  onChange={e => handleChange('uti_ii_weekend', e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl input-premium"
-                  required
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {error && <div className="text-red-400 text-sm bg-red-950/30 p-3 rounded-lg border border-red-500/20">{error}</div>}
-        {success && <div className="text-emerald-400 text-sm bg-emerald-950/30 p-3 rounded-lg border border-emerald-500/20">Configurações salvas com sucesso!</div>}
-
-        <button
-          type="submit"
-          disabled={saving}
-          className="w-full py-4 px-6 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-medium rounded-xl transition-all shadow-lg shadow-amber-500/25 active:scale-95 flex justify-center items-center gap-2"
-        >
-          {saving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Salvar Valores"}
-        </button>
-      </form>
+      </div>
     </div>
   );
 }

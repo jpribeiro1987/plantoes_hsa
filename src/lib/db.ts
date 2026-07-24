@@ -36,6 +36,13 @@ export function initDB() {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS sectors (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      weekday_value REAL DEFAULT 0,
+      weekend_value REAL DEFAULT 0
+    );
   `);
 
   // Default settings
@@ -46,6 +53,26 @@ export function initDB() {
     insertSetting.run('pronto_weekend', '1400.00');
     insertSetting.run('uti_weekday', '1419.00');
     insertSetting.run('uti_weekend', '1471.00');
+    insertSetting.run('uti_i_weekday', '1419.00');
+    insertSetting.run('uti_i_weekend', '1471.00');
+    insertSetting.run('uti_ii_weekday', '1419.00');
+    insertSetting.run('uti_ii_weekend', '1471.00');
+    insertSetting.run('shift_duration', '12');
+  }
+
+  // Migrate to sectors table if empty
+  const checkSectors = db.prepare('SELECT COUNT(*) as count FROM sectors').get() as { count: number };
+  if (checkSectors.count === 0) {
+    const insertSector = db.prepare('INSERT INTO sectors (name, weekday_value, weekend_value) VALUES (?, ?, ?)');
+    
+    const getSetting = (key: string, def: string) => {
+      const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined;
+      return parseFloat(row?.value || def);
+    };
+
+    insertSector.run('PRONTOCLINICA', getSetting('pronto_weekday', '1350'), getSetting('pronto_weekend', '1400'));
+    insertSector.run('UTI I', getSetting('uti_i_weekday', '1419'), getSetting('uti_i_weekend', '1471'));
+    insertSector.run('UTI II', getSetting('uti_ii_weekday', '1419'), getSetting('uti_ii_weekend', '1471'));
   }
 
   try {

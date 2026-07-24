@@ -60,9 +60,13 @@ export async function GET(req: Request) {
       return acc;
     }, {} as Record<string, string>);
 
+    // Fetch sectors
+    const sectorsStmt = db.prepare('SELECT name, weekday_value, weekend_value FROM sectors');
+    const sectors = sectorsStmt.all() as { name: string; weekday_value: number; weekend_value: number }[];
+
     const shiftsWithValues = shifts.map(shift => ({
       ...shift,
-      value: calculateShiftValue(shift.shift_type, shift.start_time, shift.end_time, settings)
+      value: calculateShiftValue(shift.shift_type, shift.start_time, shift.end_time, settings, sectors)
     }));
 
     return NextResponse.json({ shifts: shiftsWithValues });
