@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function PrintReportPage() {
+function PrintReportContent() {
   const searchParams = useSearchParams();
   const month = searchParams.get('month');
   const doctorId = searchParams.get('doctorId');
@@ -186,5 +186,13 @@ export default function PrintReportPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function PrintReportPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-500">Carregando relatório...</div>}>
+      <PrintReportContent />
+    </Suspense>
   );
 }
