@@ -28,13 +28,16 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: 'Invalid settings format' }, { status: 400 });
     }
 
-    const updateStmt = db.prepare('UPDATE settings SET value = ? WHERE key = ?');
+    const updateStmt = db.prepare(`
+      INSERT INTO settings (key, value) VALUES (?, ?)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value
+    `);
     
     // Run all updates in a transaction
     db.exec('BEGIN TRANSACTION');
     try {
       for (const [key, value] of Object.entries(settings)) {
-        updateStmt.run(value, key);
+        updateStmt.run(key, value);
       }
       db.exec('COMMIT');
     } catch (e) {
