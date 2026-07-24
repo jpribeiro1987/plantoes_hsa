@@ -6,7 +6,7 @@ import { Clock, LogOut, CheckCircle2, PlayCircle, StopCircle, FileText } from "l
 import { format, differenceInHours, differenceInMinutes } from "date-fns";
 
 export default function Dashboard() {
-  const [doctor, setDoctor] = useState<{ id: number; name: string } | null>(null);
+  const [doctor, setDoctor] = useState<{ id: number; name: string, allowed_unit?: string } | null>(null);
   const [activeShift, setActiveShift] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
