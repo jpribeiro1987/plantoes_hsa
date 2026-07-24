@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { Download, Calendar, ArrowLeft, Users, Clock, Edit2, Trash2, Plus, Printer, LogOut, Lock, Shield, DollarSign, Database } from "lucide-react";
+import { Download, Calendar, ArrowLeft, Users, Clock, Edit2, Trash2, Plus, Printer, LogOut, Lock, Shield, DollarSign, Database, Upload } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminPage() {
@@ -119,6 +119,40 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
 
 function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [activeTab, setActiveTab] = useState<'reports' | 'doctors' | 'shifts' | 'users' | 'settings'>('reports');
+  const [restoring, setRestoring] = useState(false);
+
+  const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!confirm('ATENÇÃO: Restaurar o backup vai substituir todos os dados atuais (plantões, médicos, configurações). Deseja continuar?')) {
+      e.target.value = '';
+      return;
+    }
+
+    setRestoring(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/admin/restore', {
+        method: 'POST',
+        body: formData
+      });
+      if (res.ok) {
+        alert('Backup restaurado com sucesso! A página será recarregada para aplicar os dados.');
+        window.location.reload();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Erro ao restaurar backup.');
+      }
+    } catch (err) {
+      alert('Erro de conexão ao restaurar backup.');
+    } finally {
+      setRestoring(false);
+      e.target.value = '';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-900 p-6 md:p-12 flex flex-col items-center">
@@ -133,8 +167,13 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
               onClick={() => window.open('/api/admin/backup', '_blank')}
               className="inline-flex items-center gap-2 text-emerald-400 hover:text-emerald-300 transition-colors bg-emerald-500/10 hover:bg-emerald-500/20 px-4 py-2 rounded-xl border border-emerald-500/20"
             >
-              <Database size={16} /> Backup do Sistema
+              <Database size={16} /> Fazer Backup
             </button>
+            <label className={`inline-flex items-center gap-2 text-sky-400 hover:text-sky-300 transition-colors bg-sky-500/10 hover:bg-sky-500/20 px-4 py-2 rounded-xl border border-sky-500/20 cursor-pointer ${restoring ? 'opacity-50 pointer-events-none' : ''}`}>
+              {restoring ? <div className="w-4 h-4 border-2 border-sky-400/30 border-t-sky-400 rounded-full animate-spin" /> : <Upload size={16} />}
+              <span>{restoring ? 'Restaurando...' : 'Restaurar'}</span>
+              <input type="file" accept=".db" className="hidden" onChange={handleRestore} disabled={restoring} />
+            </label>
             <button onClick={onLogout} className="inline-flex items-center gap-2 text-slate-400 hover:text-rose-400 transition-colors bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-xl border border-white/5">
               Sair <LogOut size={16} />
             </button>
