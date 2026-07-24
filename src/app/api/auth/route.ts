@@ -11,8 +11,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Code is required' }, { status: 400 });
     }
 
-    const stmt = db.prepare('SELECT id, name FROM doctors WHERE code = ?');
-    const doctor = stmt.get(code) as { id: number; name: string } | undefined;
+    const stmt = db.prepare('SELECT id, name, allowed_unit FROM doctors WHERE code = ?');
+    const doctor = stmt.get(code) as { id: number; name: string, allowed_unit: string } | undefined;
 
     if (!doctor) {
       return NextResponse.json({ error: 'Invalid code' }, { status: 401 });

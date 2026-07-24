@@ -267,7 +267,7 @@ function DoctorsTab() {
   const [doctors, setDoctors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingDoc, setEditingDoc] = useState<any>(null);
-  const [formData, setFormData] = useState({ name: '', code: '' });
+  const [formData, setFormData] = useState({ name: '', code: '', allowed_unit: 'ALL' });
   const [error, setError] = useState('');
 
   const loadDoctors = async () => {
@@ -285,6 +285,29 @@ function DoctorsTab() {
 
   useEffect(() => { loadDoctors(); }, []);
 
+  const toggleUnit = (unit: string) => {
+    let current = (formData.allowed_unit || 'ALL').split(',').filter(u => u !== 'ALL' && u.trim() !== '');
+    if (unit === 'ALL') {
+      setFormData({...formData, allowed_unit: 'ALL'});
+      return;
+    }
+    
+    if (current.includes(unit)) {
+      current = current.filter(u => u !== unit);
+    } else {
+      current.push(unit);
+    }
+    
+    if (current.length === 0) current = ['ALL'];
+    
+    setFormData({...formData, allowed_unit: current.join(',')});
+  };
+
+  const isUnitSelected = (unit: string) => {
+    if (formData.allowed_unit === 'ALL') return unit === 'ALL';
+    return formData.allowed_unit.split(',').includes(unit);
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -299,7 +322,7 @@ function DoctorsTab() {
       });
       if (res.ok) {
         setEditingDoc(null);
-        setFormData({ name: '', code: '' });
+        setFormData({ name: '', code: '', allowed_unit: 'ALL' });
         loadDoctors();
       } else {
         const data = await res.json();
@@ -328,7 +351,7 @@ function DoctorsTab() {
           <p className="text-slate-400 text-sm">Gerencie os acessos ao sistema</p>
         </div>
         <button 
-          onClick={() => { setEditingDoc({}); setFormData({ name: '', code: '' }); setError(''); }}
+          onClick={() => { setEditingDoc({}); setFormData({ name: '', code: '', allowed_unit: 'ALL' }); setError(''); }}
           className="bg-sky-500 hover:bg-sky-400 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
         >
           <Plus size={16} /> Novo Médico
@@ -349,6 +372,27 @@ function DoctorsTab() {
               <input type="text" required value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} className="w-full px-3 py-2 rounded-lg input-premium text-sm" />
             </div>
           </div>
+          <div className="mb-4">
+            <label className="block text-xs text-slate-400 mb-2">Unidades Permitidas</label>
+            <div className="flex flex-wrap gap-4">
+              <label className="flex items-center gap-2 text-sm text-slate-300">
+                <input type="checkbox" checked={isUnitSelected('ALL')} onChange={() => toggleUnit('ALL')} className="rounded border-white/10 bg-slate-800 text-sky-500 focus:ring-sky-500 focus:ring-offset-slate-900" />
+                Todas as Unidades
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-300">
+                <input type="checkbox" checked={isUnitSelected('PRONTOCLINICA')} onChange={() => toggleUnit('PRONTOCLINICA')} className="rounded border-white/10 bg-slate-800 text-sky-500 focus:ring-sky-500 focus:ring-offset-slate-900" />
+                Prontoclínica
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-300">
+                <input type="checkbox" checked={isUnitSelected('UTI_I')} onChange={() => toggleUnit('UTI_I')} className="rounded border-white/10 bg-slate-800 text-sky-500 focus:ring-sky-500 focus:ring-offset-slate-900" />
+                UTI I
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-300">
+                <input type="checkbox" checked={isUnitSelected('UTI_II')} onChange={() => toggleUnit('UTI_II')} className="rounded border-white/10 bg-slate-800 text-sky-500 focus:ring-sky-500 focus:ring-offset-slate-900" />
+                UTI II
+              </label>
+            </div>
+          </div>
           <div className="flex gap-2">
             <button type="submit" className="bg-emerald-500 hover:bg-emerald-400 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Salvar</button>
             <button type="button" onClick={() => setEditingDoc(null)} className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Cancelar</button>
@@ -363,6 +407,7 @@ function DoctorsTab() {
               <tr className="border-b border-white/10 text-slate-400 text-sm">
                 <th className="pb-3 px-2 font-medium">Nome</th>
                 <th className="pb-3 px-2 font-medium">Código</th>
+                <th className="pb-3 px-2 font-medium">Unidade</th>
                 <th className="pb-3 px-2 font-medium text-right">Ações</th>
               </tr>
             </thead>
@@ -371,13 +416,18 @@ function DoctorsTab() {
                 <tr key={doc.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                   <td className="py-3 px-2 text-white">{doc.name}</td>
                   <td className="py-3 px-2 text-slate-300 font-mono">{doc.code}</td>
+                  <td className="py-3 px-2 text-slate-400 text-xs">
+                    {(doc.allowed_unit || 'ALL') === 'ALL' ? 'Todas' : (doc.allowed_unit || '').split(',').map((u: string) => 
+                      u === 'PRONTOCLINICA' ? 'Prontoclínica' : u === 'UTI_I' ? 'UTI I' : u === 'UTI_II' ? 'UTI II' : u
+                    ).join(', ')}
+                  </td>
                   <td className="py-3 px-2 flex justify-end gap-2">
-                    <button onClick={() => { setEditingDoc(doc); setFormData({name: doc.name, code: doc.code}); setError(''); }} className="p-1.5 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 rounded-lg transition-all"><Edit2 size={16}/></button>
+                    <button onClick={() => { setEditingDoc(doc); setFormData({name: doc.name, code: doc.code, allowed_unit: doc.allowed_unit || 'ALL'}); setError(''); }} className="p-1.5 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 rounded-lg transition-all"><Edit2 size={16}/></button>
                     <button onClick={() => handleDelete(doc.id)} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"><Trash2 size={16}/></button>
                   </td>
                 </tr>
               ))}
-              {doctors.length === 0 && <tr><td colSpan={3} className="text-center py-6 text-slate-500">Nenhum médico cadastrado.</td></tr>}
+              {doctors.length === 0 && <tr><td colSpan={4} className="text-center py-6 text-slate-500">Nenhum médico cadastrado.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -735,8 +785,10 @@ function SettingsTab() {
   const [settings, setSettings] = useState<Record<string, string>>({
     pronto_weekday: '',
     pronto_weekend: '',
-    uti_weekday: '',
-    uti_weekend: '',
+    uti_i_weekday: '',
+    uti_i_weekend: '',
+    uti_ii_weekday: '',
+    uti_ii_weekend: '',
     shift_duration: '12'
   });
   const [loading, setLoading] = useState(true);
@@ -859,15 +911,15 @@ function SettingsTab() {
           </div>
 
           <div className="bg-slate-800/40 border border-white/5 p-6 rounded-2xl space-y-4">
-            <h3 className="font-semibold text-rose-400 mb-2">UTI (Geral / I / II)</h3>
+            <h3 className="font-semibold text-rose-400 mb-2">UTI I</h3>
             <div>
               <label className="block text-sm text-slate-400 mb-1">Segunda a Sexta (até 19h)</label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
                 <input 
                   type="number" step="0.01" 
-                  value={settings.uti_weekday || ''}
-                  onChange={e => handleChange('uti_weekday', e.target.value)}
+                  value={settings.uti_i_weekday || ''}
+                  onChange={e => handleChange('uti_i_weekday', e.target.value)}
                   className="w-full pl-10 pr-4 py-3 rounded-xl input-premium"
                   required
                 />
@@ -879,8 +931,38 @@ function SettingsTab() {
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
                 <input 
                   type="number" step="0.01" 
-                  value={settings.uti_weekend || ''}
-                  onChange={e => handleChange('uti_weekend', e.target.value)}
+                  value={settings.uti_i_weekend || ''}
+                  onChange={e => handleChange('uti_i_weekend', e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 rounded-xl input-premium"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-slate-800/40 border border-white/5 p-6 rounded-2xl space-y-4">
+            <h3 className="font-semibold text-fuchsia-400 mb-2">UTI II</h3>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Segunda a Sexta (até 19h)</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                <input 
+                  type="number" step="0.01" 
+                  value={settings.uti_ii_weekday || ''}
+                  onChange={e => handleChange('uti_ii_weekday', e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 rounded-xl input-premium"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Finais de Semana e Sexta Noturno</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                <input 
+                  type="number" step="0.01" 
+                  value={settings.uti_ii_weekend || ''}
+                  onChange={e => handleChange('uti_ii_weekend', e.target.value)}
                   className="w-full pl-10 pr-4 py-3 rounded-xl input-premium"
                   required
                 />

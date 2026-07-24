@@ -11,7 +11,8 @@ export function initDB() {
     CREATE TABLE IF NOT EXISTS doctors (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
-      code TEXT UNIQUE NOT NULL
+      code TEXT UNIQUE NOT NULL,
+      allowed_unit TEXT DEFAULT 'ALL'
     );
 
     CREATE TABLE IF NOT EXISTS shifts (
@@ -53,6 +54,10 @@ export function initDB() {
   
   try {
     db.exec("ALTER TABLE shifts ADD COLUMN shift_type TEXT DEFAULT 'PRONTOCLINICA';");
+  } catch (e) {}
+
+  try {
+    db.exec("ALTER TABLE doctors ADD COLUMN allowed_unit TEXT DEFAULT 'ALL';");
   } catch (e) {}
 
   // Insere médicos de teste se a tabela estiver vazia

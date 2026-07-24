@@ -4,7 +4,7 @@ import { db, initDB } from '@/lib/db';
 export async function GET() {
   try {
     initDB();
-    const stmt = db.prepare('SELECT id, name, code FROM doctors ORDER BY name ASC');
+    const stmt = db.prepare('SELECT id, name, code, allowed_unit FROM doctors ORDER BY name ASC');
     const doctors = stmt.all();
     return NextResponse.json({ doctors });
   } catch (error) {
@@ -15,11 +15,13 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     initDB();
-    const { name, code } = await req.json();
+    const { name, code, allowed_unit } = await req.json();
     if (!name || !code) return NextResponse.json({ error: 'Name and code required' }, { status: 400 });
+    
+    const unit = allowed_unit || 'ALL';
 
-    const stmt = db.prepare('INSERT INTO doctors (name, code) VALUES (?, ?)');
-    const result = stmt.run(name, code);
+    const stmt = db.prepare('INSERT INTO doctors (name, code, allowed_unit) VALUES (?, ?, ?)');
+    const result = stmt.run(name, code, unit);
     return NextResponse.json({ success: true, id: result.lastInsertRowid });
   } catch (error: any) {
     if (error.message.includes('UNIQUE constraint failed')) {
@@ -32,11 +34,13 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     initDB();
-    const { id, name, code } = await req.json();
+    const { id, name, code, allowed_unit } = await req.json();
     if (!id || !name || !code) return NextResponse.json({ error: 'ID, name and code required' }, { status: 400 });
+    
+    const unit = allowed_unit || 'ALL';
 
-    const stmt = db.prepare('UPDATE doctors SET name = ?, code = ? WHERE id = ?');
-    stmt.run(name, code, id);
+    const stmt = db.prepare('UPDATE doctors SET name = ?, code = ?, allowed_unit = ? WHERE id = ?');
+    stmt.run(name, code, unit, id);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     if (error.message.includes('UNIQUE constraint failed')) {

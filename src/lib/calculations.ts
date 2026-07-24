@@ -14,12 +14,18 @@ export function calculateShiftValue(shiftType: string, startTimeIso: string, end
 
   const prontoWeekday = parseFloat(settings.pronto_weekday || '1350');
   const prontoWeekend = parseFloat(settings.pronto_weekend || '1400');
-  const utiWeekday = parseFloat(settings.uti_weekday || '1419');
-  const utiWeekend = parseFloat(settings.uti_weekend || '1471');
+  const utiIWeekday = parseFloat(settings.uti_i_weekday || '1419');
+  const utiIWeekend = parseFloat(settings.uti_i_weekend || '1471');
+  const utiIiWeekday = parseFloat(settings.uti_ii_weekday || '1419');
+  const utiIiWeekend = parseFloat(settings.uti_ii_weekend || '1471');
 
   let fullShiftValue = 0;
-  if (shiftType === 'UTI') {
-    fullShiftValue = isWeekendOrFridayNight ? utiWeekend : utiWeekday;
+  if (shiftType === 'UTI_I') {
+    fullShiftValue = isWeekendOrFridayNight ? utiIWeekend : utiIWeekday;
+  } else if (shiftType === 'UTI_II') {
+    fullShiftValue = isWeekendOrFridayNight ? utiIiWeekend : utiIiWeekday;
+  } else if (shiftType === 'UTI') { // Fallback for old records
+    fullShiftValue = isWeekendOrFridayNight ? utiIWeekend : utiIWeekday;
   } else {
     // PRONTOCLINICA (or default)
     fullShiftValue = isWeekendOrFridayNight ? prontoWeekend : prontoWeekday;

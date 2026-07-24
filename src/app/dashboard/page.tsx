@@ -23,6 +23,12 @@ export default function Dashboard() {
     }
     const doc = JSON.parse(docData);
     setDoctor(doc);
+    if (doc.allowed_unit && doc.allowed_unit !== 'ALL') {
+      const units = doc.allowed_unit.split(',');
+      if (units.length > 0) {
+        setShiftType(units[0]);
+      }
+    }
     fetchShift(doc.id);
 
     const timer = setInterval(() => setCurrentTime(new Date()), 60000); // update every minute
@@ -158,19 +164,31 @@ export default function Dashboard() {
               </button>
             ) : (
               <div className="w-full">
-                <div className="mb-6 grid grid-cols-2 gap-3">
-                  <button 
-                    onClick={() => setShiftType('PRONTOCLINICA')}
-                    className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-2 ${shiftType === 'PRONTOCLINICA' ? 'border-sky-500 bg-sky-500/10 text-sky-400' : 'border-white/5 bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
-                  >
-                    <span className="font-semibold text-sm">Prontoclínica</span>
-                  </button>
-                  <button 
-                    onClick={() => setShiftType('UTI')}
-                    className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-2 ${shiftType === 'UTI' ? 'border-sky-500 bg-sky-500/10 text-sky-400' : 'border-white/5 bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
-                  >
-                    <span className="font-semibold text-sm">UTI</span>
-                  </button>
+                <div className="mb-6 grid grid-cols-3 gap-3">
+                  {(!doctor.allowed_unit || doctor.allowed_unit === 'ALL' || doctor.allowed_unit.split(',').includes('PRONTOCLINICA')) && (
+                    <button 
+                      onClick={() => setShiftType('PRONTOCLINICA')}
+                      className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-2 ${shiftType === 'PRONTOCLINICA' ? 'border-sky-500 bg-sky-500/10 text-sky-400' : 'border-white/5 bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                    >
+                      <span className="font-semibold text-sm">Prontoclínica</span>
+                    </button>
+                  )}
+                  {(!doctor.allowed_unit || doctor.allowed_unit === 'ALL' || doctor.allowed_unit.split(',').includes('UTI_I')) && (
+                    <button 
+                      onClick={() => setShiftType('UTI_I')}
+                      className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-2 ${shiftType === 'UTI_I' ? 'border-sky-500 bg-sky-500/10 text-sky-400' : 'border-white/5 bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                    >
+                      <span className="font-semibold text-sm">UTI I</span>
+                    </button>
+                  )}
+                  {(!doctor.allowed_unit || doctor.allowed_unit === 'ALL' || doctor.allowed_unit.split(',').includes('UTI_II')) && (
+                    <button 
+                      onClick={() => setShiftType('UTI_II')}
+                      className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-2 ${shiftType === 'UTI_II' ? 'border-sky-500 bg-sky-500/10 text-sky-400' : 'border-white/5 bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                    >
+                      <span className="font-semibold text-sm">UTI II</span>
+                    </button>
+                  )}
                 </div>
                 <button
                   onClick={() => handleShiftAction('start')}
